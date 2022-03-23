@@ -3,68 +3,85 @@ package com.example.app;
 import com.mongodb.client.MongoClients;
 
 import dev.morphia.Morphia;
-import dev.morphia.query.internal.MorphiaCursor;
-import com.mongodb.client.result.UpdateResult;
 import dev.morphia.Datastore;
 import dev.morphia.annotations.Entity;
-import dev.morphia.annotations.Field;
 import dev.morphia.annotations.Id;
-import dev.morphia.annotations.Property;
-import dev.morphia.annotations.Reference;
 import dev.morphia.DeleteOptions;
-import dev.morphia.UpdateOptions;
-import dev.morphia.query.Query;
+
+import dev.morphia.annotations.Field;
+import dev.morphia.annotations.Index;
+import dev.morphia.annotations.IndexOptions;
+import dev.morphia.annotations.Indexes;
+
 import org.bson.types.ObjectId;
 
-import static dev.morphia.query.experimental.filters.Filters.lte;
-import static dev.morphia.query.experimental.filters.Filters.eq;
-import static dev.morphia.query.experimental.updates.UpdateOperators.mul;
+import dev.morphia.mapping.experimental.MorphiaReference;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**** Define entities ****/
-// Books Model
-@Entity("books")
-class Book {
+// Recipe Model
+@Entity("recipes")
+@Indexes(
+    @Index(fields = @Field(value = "name"))
+)
+class Recipe {
     @Id
     private ObjectId id;
-    private String title;
-    private Author author;
-    private Double price;
-    private Boolean onSale;
+    private String name;
+    private MorphiaReference<List<Ingredient>> ingredients;
 
-    Book() {
+    Recipe() {
     }
 
-    Book(String title, Author author, Double price) {
-        this.title = title;
-        this.author = author;
-        this.price = price;
+    Recipe(String name) {
+        this.name = name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
     }
 
     public String toString() {
-        return this.title + " by " + this.author.toString() + " -- " + this.price + "$";
+        return this.name + " - " + this.getIngredients().size() + " ingredients";
     }
 
-    public void setOnSale() {
-        this.price = this.price * 0.5;
-        this.onSale = true;
+    public List<Ingredient> getIngredients() {
+        return ingredients.get();
+    }
+
+    public void setIngredients( List<Ingredient> list) {
+        this.ingredients = MorphiaReference.wrap(list);
+    }
+
+    public void addIngredient(Ingredient ingredient) {
+        List<Ingredient> currentIngredients = this.getIngredients();
+        currentIngredients.add(ingredient);
+        this.ingredients = MorphiaReference.wrap(currentIngredients);
+    }
+
+    public void removeIngredient(Ingredient ingredient) {
+        List<Ingredient> currentIngredients = this.getIngredients();
+        currentIngredients.remove(ingredient);
+        this.ingredients = MorphiaReference.wrap(currentIngredients);
     }
 }
 
-// Authors Model
-@Entity("authors")
-class Author {
+// Ingredient Model
+@Entity("ingredients")
+@Indexes(@Index(options = @IndexOptions(name = "name"), fields = @Field("name")))
+class Ingredient {
     @Id
     private ObjectId id;
-    private String firstName;
-    private String lastName;
+    private String name;
 
-    Author(String firstName, String lastName) {
-        this.firstName = firstName;
-        this.lastName = lastName;
+    Ingredient(String name) {
+        this.name = name;
     }
 
     public String toString() {
-        return this.firstName + " " + this.lastName;
+        return this.name;
     }
 }
 
@@ -82,64 +99,53 @@ public class App
             MongoClients.create(uri), 
             "morphia_quickstart"
         );
-        // Bind the Book and Author entities
+        // Bind the entities
         datastore.getMapper().mapPackage("com.example.app");
 
         // Clean up the database by deleting any existing entries
-        datastore.find(Book.class)
+        datastore.find(Ingredient.class)
             .delete(new DeleteOptions()
                 .multi(true)
             );
+        datastore.find(Recipe.class)
+            .delete(new DeleteOptions().multi(true));
 
         /**** Create records (Crud) ****/
-        // Create authors
-        final Author carroll = new Author("Lewis", "Carroll");
-        datastore.save(carroll);
-        final Author tolkien = new Author("John Ronald Reuel", "Tolkien");
-        datastore.save(tolkien);
-        final Author kafka = new Author("Franz", "Kafka");
-        datastore.save(kafka);
+        // Create ingredients
+        final Ingredient bread = new Ingredient("Bread");
+        datastore.save(bread);
+        final Ingredient peanutButter = new Ingredient("Peanut Butter");
+        datastore.save(peanutButter);
+        final Ingredient jelly = new Ingredient("Jelly");
+        datastore.save(jelly);
 
-        // Create books
-        final Book alice = new Book("Alice's Adventures In Wonderland", carroll, 20.0);
-        datastore.save(alice);
-        final Book hobbit = new Book("The Hobbit", tolkien, 8.0);
-        datastore.save(hobbit);
-        final Book lotr = new Book("Lord of the Ring", tolkien, 30.0);
-        datastore.save(lotr);
-        final Book metamorphosis = new Book("The Metamorphosis", kafka, 10.0);
-        datastore.save(metamorphosis);
-
-        /**** Read from the database (cRud) ****/
-        // Count the number of books in the collection
-        Query<Book> query = datastore.find(Book.class);
-        final long booksCount = query.count();
-        System.out.println("Found " + booksCount + " books");
-
-        // Find all books by Tolkien
-        final Query<Book> tolkienBooks = datastore.find(Book.class)
-            .filter("author", tolkien);
-        for (Book book : tolkienBooks) {
-            System.out.println(book.toString());
+        // Create recipe
+        final Recipe pbnj = new Recipe("PB & J");
+        
+        // Create the references
+        List<Ingredient> list=new ArrayList<Ingredient>();  
+        //Adding elements in the List  
+        list.add(bread);  
+        list.add(peanutButter);  
+        list.add(jelly);
+        pbnj.setIngredients(list);
+        datastore.save(pbnj);
+        System.out.println(pbnj);
+        for (Ingredient i : pbnj.getIngredients()) {
+            System.out.println(i);
         }
 
-        /**** Update records (crUd) ****/
-        // Set the Tolkien books on sale
-        for (Book book : tolkienBooks) {
-            book.setOnSale();
-            datastore.save(book);
-        }
+        pbnj.setName("Gourmet PB & J");
+        final Ingredient waffle = new Ingredient("Waffle");
+        datastore.save(waffle);
+        pbnj.removeIngredient(bread);
+        pbnj.addIngredient(waffle);
+        datastore.save(pbnj);
+        System.out.println(pbnj);
 
-        for (Book book : tolkienBooks) {
-            System.out.println(book.toString());
+        for (Ingredient i : pbnj.getIngredients()) {
+            System.out.println(i);
         }
-
-        /**** Delete records (cruD) ****/
-        datastore.find(Book.class)
-            .filter(eq("onSale", true))
-            .delete(new DeleteOptions()
-                .multi(true)
-            );
     }
 }
 
