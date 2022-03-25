@@ -14,6 +14,37 @@ import org.bson.types.ObjectId;
 import java.util.List;
 
 /**** Define entities ****/
+
+// Ingredient Model
+@Entity("ingredients")
+@Indexes(@Index(options = @IndexOptions(name = "name"), fields = @Field("name")))
+class Ingredient {
+    @Id
+    private ObjectId id;
+    private String name;
+    private Boolean healthy;
+
+    Ingredient(String name) {
+        this.name = name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public String getName() {
+        return this.name;
+    }
+
+    public void setHealthy(Boolean healthy) {
+        this.healthy = healthy;
+    }
+
+    public String toString() {
+        return this.name;
+    }
+}
+
 // Recipe Model
 @Entity("recipes")
 @Indexes(
@@ -38,45 +69,20 @@ class Recipe {
     }
 
     public String toString() {
-        return this.name + " - " + this.getIngredients().size() + " ingredients";
+        String output = this.name;
+        List<Ingredient> ingredients = this.getIngredients();
+        output += " - " + ingredients.size() + " ingredients";
+        for (Ingredient ingredient : ingredients) {
+            output += "\n  - " + ingredient;
+        }
+        return output;
     }
 
     public List<Ingredient> getIngredients() {
-        // return ingredients.get();
         return this.ingredients;
     }
 
     public void setIngredients( List<Ingredient> list) {
-        // this.ingredients = MorphiaReference.wrap(list);
         this.ingredients = list;
-    }
-
-    public void addIngredient(Ingredient ingredient) {
-        List<Ingredient> currentIngredients = this.getIngredients();
-        currentIngredients.add(ingredient);
-        this.setIngredients(currentIngredients);
-    }
-
-    public void removeIngredient(Ingredient ingredient) {
-        List<Ingredient> currentIngredients = this.getIngredients();
-        currentIngredients.remove(ingredient);
-        this.setIngredients(currentIngredients);
-    }
-}
-
-// Ingredient Model
-@Entity("ingredients")
-@Indexes(@Index(options = @IndexOptions(name = "name"), fields = @Field("name")))
-class Ingredient {
-    @Id
-    private ObjectId id;
-    private String name;
-
-    Ingredient(String name) {
-        this.name = name;
-    }
-
-    public String toString() {
-        return this.name;
     }
 }
