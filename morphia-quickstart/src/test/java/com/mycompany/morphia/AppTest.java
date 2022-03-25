@@ -1,4 +1,4 @@
-package com.example.app;
+package com.mycompany.morphia;
 
 import static org.junit.Assert.assertTrue;
 
